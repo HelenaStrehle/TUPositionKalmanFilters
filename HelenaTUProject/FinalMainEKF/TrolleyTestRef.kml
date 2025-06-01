@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:gx="http://www.google.com/kml/ext/2.2">
+  <Document>
+    <open>1</open>
+    <visibility>1</visibility>
+    <name>24 Apr 2025 at 17.10.00</name>
+    <atom:author>
+      <atom:name>Recorded in Geo Tracker for iOS from Ilya Bogdanovich</atom:name>
+    </atom:author>
+    <atom:link href="https://apps.apple.com/app/geo-tracker-gps-tracker/id1610586137" />
+    <TimeStamp>
+      <when>2025-04-24T15:10:00.881Z</when>
+    </TimeStamp>
+    <Style id="track">
+      <LineStyle>
+        <color>ffff9509</color>
+        <width>4</width>
+      </LineStyle>
+    </Style>
+    <Schema id="geotrackerTrackSchema">
+      <gx:SimpleArrayField name="speed" type="float">
+        <displayName>Speed, meters per second</displayName>
+      </gx:SimpleArrayField>
+      <gx:SimpleArrayField name="course" type="float">
+        <displayName>Course, radians</displayName>
+      </gx:SimpleArrayField>
+    </Schema>
+    <Placemark id="tour">
+      <name>24 Apr 2025 at 17.10.00</name>
+      <atom:author>
+        <atom:name>Recorded in Geo Tracker for iOS from Ilya Bogdanovich</atom:name>
+      </atom:author>
+      <atom:link href="https://apps.apple.com/app/geo-tracker-gps-tracker/id1610586137" />
+      <ExtendedData>
+        <Data name="activity">
+          <value>0</value>
+        </Data>
+      </ExtendedData>
+      <TimeSpan>
+        <begin>2025-04-24T15:10:00.881Z</begin>
+        <end>2025-04-24T15:14:54.798Z</end>
+      </TimeSpan>
+      <styleUrl>#track</styleUrl>
+      <gx:MultiTrack>
+        <altitudeMode>absolute</altitudeMode>
+        <gx:interpolate>0</gx:interpolate>
+        <gx:Track>
+          <when>2025-04-24T15:10:39.999Z</when>
+          <when>2025-04-24T15:10:50.999Z</when>
+          <when>2025-04-24T15:11:00.999Z</when>
+          <when>2025-04-24T15:11:09.999Z</when>
+          <when>2025-04-24T15:11:18.999Z</when>
+          <when>2025-04-24T15:11:27.999Z</when>
+          <when>2025-04-24T15:11:37Z</when>
+          <when>2025-04-24T15:11:46Z</when>
+          <when>2025-04-24T15:11:54.999Z</when>
+          <when>2025-04-24T15:12:02.999Z</when>
+          <when>2025-04-24T15:12:11.999Z</when>
+          <when>2025-04-24T15:12:19.999Z</when>
+          <when>2025-04-24T15:12:28.999Z</when>
+          <when>2025-04-24T15:12:39.999Z</when>
+          <when>2025-04-24T15:12:47.999Z</when>
+          <when>2025-04-24T15:12:56.999Z</when>
+          <when>2025-04-24T15:13:05.999Z</when>
+          <when>2025-04-24T15:13:14.999Z</when>
+          <when>2025-04-24T15:13:23.999Z</when>
+          <when>2025-04-24T15:13:38.999Z</when>
+          <when>2025-04-24T15:13:47.999Z</when>
+          <when>2025-04-24T15:13:57Z</when>
+          <when>2025-04-24T15:14:06Z</when>
+          <when>2025-04-24T15:14:15Z</when>
+          <gx:coord>9.94870779 57.04799536 4.57</gx:coord>
+          <gx:coord>9.94873206 57.0480967 4.41</gx:coord>
+          <gx:coord>9.94856165 57.04808733 3.94</gx:coord>
+          <gx:coord>9.94841612 57.04803791 3.93</gx:coord>
+          <gx:coord>9.94827212 57.04798673 3.84</gx:coord>
+          <gx:coord>9.94814173 57.04791985 4.06</gx:coord>
+          <gx:coord>9.94800297 57.04785609 4.21</gx:coord>
+          <gx:coord>9.94783259 57.04782515 3.76</gx:coord>
+          <gx:coord>9.94776055 57.04791091 4.03</gx:coord>
+          <gx:coord>9.94787464 57.0479844 4.03</gx:coord>
+          <gx:coord>9.94800663 57.04805829 3.79</gx:coord>
+          <gx:coord>9.94812906 57.04812183 3.55</gx:coord>
+          <gx:coord>9.94826907 57.04818757 3.68</gx:coord>
+          <gx:coord>9.94843309 57.04817673 3.67</gx:coord>
+          <gx:coord>9.94833164 57.04809266 3.68</gx:coord>
+          <gx:coord>9.94823274 57.0480191 4</gx:coord>
+          <gx:coord>9.94813572 57.04794001 3.98</gx:coord>
+          <gx:coord>9.94805001 57.0478614 3.9</gx:coord>
+          <gx:coord>9.948026 57.04777165 4.09</gx:coord>
+          <gx:coord>9.9481983 57.04777702 4.35</gx:coord>
+          <gx:coord>9.94832659 57.04784353 4.43</gx:coord>
+          <gx:coord>9.94845029 57.04790665 4.41</gx:coord>
+          <gx:coord>9.94857399 57.04797522 4.54</gx:coord>
+          <gx:coord>9.94870052 57.04803981 4.54</gx:coord>
+        </gx:Track>
+      </gx:MultiTrack>
+    </Placemark>
+  </Document>
+</kml>
