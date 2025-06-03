@@ -228,7 +228,7 @@ set(ax, 'FontSize', 16);
 
 %Initialise
 x_ekf_gnss_bias = zeros(6, N);
-x_ekf_gnss_bias(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.3];
+x_ekf_gnss_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.3];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_gnss_bias(:,1);
@@ -319,7 +319,7 @@ set(ax, 'FontSize', 16);
 
 %Initialise
 x_ekf_ble_bias = zeros(6, N);
-x_ekf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.15];
+x_ekf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.3];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_ble_bias(:,1);
@@ -487,7 +487,7 @@ legend('Location', 'best');
 
 %Initialise
 x_ekf_all = zeros(6, N);
-x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.15];
+x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.3];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_all(:,1);
