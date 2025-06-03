@@ -228,7 +228,7 @@ set(ax, 'FontSize', 16);
 
 %Initialise
 x_ekf_gnss_bias = zeros(6, N);
-x_ekf_gnss_bias(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
+x_ekf_gnss_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 
 % log
@@ -329,7 +329,7 @@ set(ax, 'FontSize', 16);
 
 %Initialise
 x_ekf_ble_bias = zeros(6, N);
-x_ekf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
+x_ekf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 
 % log
@@ -501,7 +501,7 @@ legend('Location', 'best');
 
 %Initialise
 x_ekf_all = zeros(6, N);
-x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
+x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_all(:,1);
@@ -704,7 +704,7 @@ legend('Location', 'best');
 
 %Initialise
 x_ekf_all = zeros(6, N);
-x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.0];
+x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.0];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_all(:,1);
@@ -967,83 +967,6 @@ legend('Location', 'best');
 % legend('Location', 'best');
 % axis equal;
 % set(gca, 'FontSize', 18); grid on;
-
-%%
-
-rmse_values = [6.70, 9.24, 15.30,15.67, 11.57, 13.26];
-labels = {'GNSS', '', 'BLE', '', 'GNSS + BLE', ''};
-
-filter_types = {'EKF', 'UKF', 'EKF', 'UKF', 'EKF', 'UKF'};
-
-% Tildel farver til EKF og UKF
-colors = struct('EKF', [0 0.45 0.74], 'UKF', [0.85 0.33 0.10]);  % blå og rød
-
-% Opret figur
-figure; hold on;
-
-% Vend rækkefølgen for visning oppefra
-rmse_values = flip(rmse_values);
-labels = flip(labels);
-filter_types = flip(filter_types);
-
-% Udregn xmin og xmax
-xmin = min(rmse_values) - 1;
-xmax = max(rmse_values) + 1;
-
-% Initialiser farvehandle til legend
-h_ekf = [];
-h_ukf = [];
-
-for i = 1:length(rmse_values)
-    y = i;
-    x = rmse_values(i);
-    filter = filter_types{i};
-    color = colors.(filter);
-
-    % Streg
-    h = plot([0 x], [y y], '-', 'LineWidth', 3, 'Color', color);
-
-    % Prik
-    plot(x, y, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 5);
-
-    % Tekst
-    text(x + 0.3, y, sprintf('%.2f m', x), 'FontSize', 13, ...
-        'VerticalAlignment', 'middle');
-
-    % Gem handle til legend én gang
-    if strcmp(filter, 'EKF') && isempty(h_ekf)
-        h_ekf = h;
-    elseif strcmp(filter, 'UKF') && isempty(h_ukf)
-        h_ukf = h;
-    end
-end
-
-% Brug egne y-labels
-yticks(1:length(labels));
-yticklabels(labels);
-
-% Fjern y-ticks og indsæt samlede labels
-yticks([]);
-x_text = xmin - 0.05 * (xmax - xmin);  % lidt til venstre for stigerne
-text(x_text+0.7, 1.5, 'GNSS + BLE', 'HorizontalAlignment', 'right', 'FontSize', 14);
-text(x_text+0.7, 3.5, 'BLE', 'HorizontalAlignment', 'right', 'FontSize', 14);
-text(x_text+0.7, 5.5, 'GNSS', 'HorizontalAlignment', 'right', 'FontSize', 14);
-
-
-xlabel('RMSE [m]');
-xlim([6, max(rmse_values) + 2]);
-ylim([0.5, length(rmse_values) + 0.5]);
-title('RMSE comparison across correction methods');
-
-% Legend med farveforklaring
-legend([h_ekf h_ukf], {'EKF', 'UKF'}, 'Location', 'southwest');
-
-set(gca, 'FontSize', 16);
-grid on;
-
-% Kompakt figur
-set(gcf, 'Position', [100 100 600 220]);
-
 
 
 %% EKF functions
