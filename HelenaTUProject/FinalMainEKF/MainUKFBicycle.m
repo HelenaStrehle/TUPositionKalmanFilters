@@ -201,7 +201,7 @@ alpha = 1e-3;
 kappa = 0;
 beta  = 2;
 x_ukf_gnss_bias = zeros(6, N);
-x_ukf_gnss_bias(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
+x_ukf_gnss_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 
 % Q scaling constants
@@ -477,7 +477,7 @@ beta  = 2;
 
 %Initialise
 x_ukf_all = zeros(6, N);
-x_ukf_all(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
+x_ukf_all(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 
 % Q scaling constants
