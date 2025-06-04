@@ -697,3 +697,223 @@ fill(xGNSS_10014520_shifted + radius*cos(theta), ...
     'k', 'FaceAlpha', 0.1, 'EdgeColor', 'none', 'HandleVisibility', 'off');
 
 legend('Location', 'best');
+
+%% EKF functions
+
+function [x_pred, P_pred, Q] = ekf_prediction_step(x_prev, P_prev, u, Q, dt, f, computeF)
+
+% prediction
+x_pred = f(x_prev, u, dt);
+x_pred(4:5) = x_pred(4:5) / norm(x_pred(4:5) + 1e-6);
+x_pred_k = x_pred;
+
+% Cov pred
+F = computeF(x_prev, u, dt);
+P_pred = F * P_prev * F' + Q;
+end
+
+function Q = compute_Q(x_prev, alpha_v, alpha_h, Rpi2, acc_noise, gyro_noise, dt)
+
+% Q construction
+h = x_prev(4:5);
+h = h / norm(h + 1e-6);
+H_rot = Rpi2 * (h * h') * Rpi2';
+
+Q = zeros(5,5);
+Q(3,3) = alpha_v * (acc_noise(3)^2 * dt^2);
+Q_h = gyro_noise(1)^2 * dt^2 * H_rot;
+Q(4:5,4:5) = alpha_h * Q_h;
+
+end
+
+function Q = compute_Q_bias(x_prev, alpha_v, alpha_h, Rpi2, acc_noise, gyro_noise, dt,alpha_bias)
+
+% Q construction
+h = x_prev(4:5);
+h = h / norm(h + 1e-6);
+H_rot = Rpi2 * (h * h') * Rpi2';
+
+Q = zeros(6,6);
+Q(3,3) = alpha_v * (acc_noise(3)^2 * dt^2);
+Q_h = gyro_noise(1)^2 * dt^2 * H_rot;
+Q(4:5,4:5) = alpha_h * Q_h;
+Q(6,6) = alpha_bias;
+
+end
+
+function [x_upd, P_upd, y_tilde] = ekf_gnss_correction(x_pred, P_pred, z, H, R)
+y_tilde = z - H * x_pred;
+
+S = H * P_pred * H' + R;
+K = P_pred * H' / S;
+
+x_upd = x_pred + K * y_tilde;
+x_upd(4:5) = x_upd(4:5) / norm(x_upd(4:5) + 1e-6);
+
+I = eye(size(P_pred));
+P_upd = (I - K * H) * P_pred * (I - K * H)' + K * R * K';
+end
+
+function [x_upd, P_upd, y_ble, rssi_expected, d_measured] = ekf_ble_correction_rssi( ...
+    x_pred, P_pred, ref_pos, rssi_now, R_ble, n, A)
+
+dx = x_pred(1) - ref_pos(1);
+dy = x_pred(2) - ref_pos(2);
+d_expected = norm([dx; dy]) + 1e-6;
+rssi_expected = A - 10 * n * log10(d_expected);
+d_measured = 10^((A - rssi_now) / (10 * n));
+
+y_ble = -(rssi_now - rssi_expected);
+
+H_ble = zeros(1,6);
+H_ble(1) = (10 * n / log10(10)) * dx / d_expected^2;
+H_ble(2) = (10 * n / log10(10)) * dy / d_expected^2;
+
+S_ble = H_ble * P_pred * H_ble' + R_ble;
+K_ble = (P_pred * H_ble') / S_ble;
+
+x_upd = x_pred + K_ble * y_ble;
+x_upd(4:5) = x_upd(4:5) / norm(x_upd(4:5) + 1e-6);
+I = eye(size(P_pred));
+P_upd = (I - K_ble * H_ble) * P_pred * (I - K_ble * H_ble)' + K_ble * R_ble * K_ble';
+end
+
+
+
+
+%% Functions for comparison
+
+function [mse_total, rmse_total] = compare_estimate_to_gnss(x_est, timestamp_est, x_ref, y_ref, timestamp_ref, name)
+
+if nargin < 6
+    name = 'Estimat';
+end
+
+x_ref_interp = interp1(timestamp_ref, x_ref, timestamp_est, 'linear', 'extrap');
+y_ref_interp = interp1(timestamp_ref, y_ref, timestamp_est, 'linear', 'extrap');
+
+squared_error = (x_est(1,:)' - x_ref_interp).^2 + (x_est(2,:)' - y_ref_interp).^2;
+
+mse_over_time = movmean(squared_error, 5);
+
+mse_total = mean(squared_error, 'omitnan');
+rmse_total = sqrt(mse_total);
+
+fprintf('--- %s vs. GNSS ---\n', name);
+fprintf('Samlet MSE: %.3f m²\n', mse_total);
+fprintf('Samlet RMSE: %.3f m\n', rmse_total);
+
+figure;
+
+subplot(3,1,1)
+plot(timestamp_est, x_est(1,:), 'b', timestamp_est, x_ref_interp, 'r--');
+xlabel('Time'); ylabel('x [m]');
+legend([name ' estimat'], 'Geo Tracker Reference');
+title('x-position');
+
+subplot(3,1,2)
+plot(timestamp_est, x_est(2,:), 'b', timestamp_est, y_ref_interp, 'r--');
+xlabel('Time'); ylabel('y [m]');
+legend([name ' estimat'], 'Geo Tracker Reference');
+title('y-position');
+
+subplot(3,1,3)
+plot(timestamp_est, mse_over_time, 'k');
+xlabel('Time'); ylabel('MSE [m²]');
+title('Mean Square Error over tid');
+
+sgtitle([name ' vs. Geo Tracker Reference']);
+end
+
+
+%% Plot functions
+
+function [x_offset, y_offset, ax] = plot_ekf_result_with_arrows( ...
+    x_ekf, y_ekf, xGNSS, yGNSS, xRef, yRef, ...
+    arrow_step, arrow_length, arrow_width, rmse_val)
+
+x_ekf = movmean(x_ekf, 5);
+y_ekf = movmean(y_ekf, 5);
+
+x_offset = min([x_ekf(:); xGNSS(:); xRef(:)]);
+y_offset = min([y_ekf(:); yGNSS(:); yRef(:)]);
+x_ekf = x_ekf - x_offset;
+y_ekf = y_ekf - y_offset;
+xGNSS = xGNSS - x_offset;
+yGNSS = yGNSS - y_offset;
+xRef = xRef - x_offset;
+yRef = yRef - y_offset;
+
+fig = figure;
+ax = gca;
+
+plot(ax, x_ekf, y_ekf, 'b-', 'LineWidth', 1.5, 'DisplayName', 'EKF position estimate'); hold(ax, 'on');
+plot(ax, xGNSS, yGNSS, 'ro', 'DisplayName', 'GNSS position');
+plot(ax, xRef, yRef, '-', 'Color', [0.5 0 0.5], 'LineWidth', 1.5, 'DisplayName', 'Geo Tracker Ref');
+
+idx = 1:arrow_step:(length(x_ekf) - 1);
+u = x_ekf(idx + 1) - x_ekf(idx);
+v = y_ekf(idx + 1) - y_ekf(idx);
+mag = sqrt(u.^2 + v.^2);
+mag(mag == 0) = eps;
+u = u ./ mag;
+v = v ./ mag;
+
+for i = 1:length(idx)
+    x0 = x_ekf(idx(i));
+    y0 = y_ekf(idx(i));
+    dx = u(i); dy = v(i);
+    perp = [-dy, dx];
+    tip = [x0 + dx * arrow_length, y0 + dy * arrow_length];
+    base1 = [x0 + perp(1) * arrow_width / 2, y0 + perp(2) * arrow_width / 2];
+    base2 = [x0 - perp(1) * arrow_width / 2, y0 - perp(2) * arrow_width / 2];
+
+    fill(ax, [base1(1), base2(1), tip(1)], ...
+        [base1(2), base2(2), tip(2)], ...
+        'b', 'EdgeColor', 'none', 'HandleVisibility', 'off');
+end
+
+idx_ref = 1:5:(length(xRef) - 1);
+u_ref = xRef(idx_ref + 1) - xRef(idx_ref);
+v_ref = yRef(idx_ref + 1) - yRef(idx_ref);
+mag_ref = sqrt(u_ref.^2 + v_ref.^2);
+u_ref = u_ref ./ mag_ref;
+v_ref = v_ref ./ mag_ref;
+
+for i = 1:length(idx_ref)
+    x0 = xRef(idx_ref(i));
+    y0 = yRef(idx_ref(i));
+    dx = u_ref(i); dy = v_ref(i);
+    perp = [-dy, dx];
+    tip = [x0 + dx * arrow_length, y0 + dy * arrow_length];
+    base1 = [x0 + perp(1) * arrow_width / 2, y0 + perp(2) * arrow_width / 2];
+    base2 = [x0 - perp(1) * arrow_width / 2, y0 - perp(2) * arrow_width / 2];
+
+    fill(ax, [base1(1), base2(1), tip(1)], ...
+        [base1(2), base2(2), tip(2)], ...
+        [0.5 0 0.5], 'EdgeColor', 'none', 'HandleVisibility', 'off');
+end
+
+xlabel(ax, 'Distance East [m]');
+ylabel(ax, 'Distance North [m]');
+title(ax, 'ekf with GNSS Correction and Bias State');
+legend(ax, 'Location', 'best');
+axis(ax, 'equal');
+grid(ax, 'on');
+set(ax, 'FontSize', 18);
+
+drawnow;
+xlims = xlim(ax);
+ylims = ylim(ax);
+x_txt = xlims(2) - 0.01 * range(xlims);
+y_txt = ylims(2) - 0.02 * range(ylims);
+text(ax, x_txt, y_txt, sprintf('RMSE = %.2f m', rmse_val), ...
+    'FontSize', 16, 'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
+
+end
+
+
+
+
+
