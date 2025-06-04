@@ -150,8 +150,8 @@ x_pred(:,1) = x_ekf(:,1);
 
 
 % Q scaling constants
-alpha_v = 1000;
-alpha_h = 1000;
+alpha_v = 100000;
+alpha_h = 10000;
 
 % Update step initialising
 H_gnss = [1 0 0 0 0;
@@ -319,14 +319,14 @@ set(ax, 'FontSize', 16);
 
 %Initialise
 x_ekf_ble_bias = zeros(6, N);
-x_ekf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.3];
+x_ekf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.1];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_ble_bias(:,1);
 
 % Q scaling constants
-alpha_v = 100000;
-alpha_h = 100000000;
+alpha_v = 1000;
+alpha_h = 10;
 alpha_bias = 1e-6;
 
 % Bluetooth set up
@@ -378,7 +378,7 @@ for k = 2:N
     [x_pred, P_pred, Q] = ekf_prediction_step(x_ekf_ble_bias(:,k-1), P_pred, u, Q_bias, dt, f_bias, computeF_bias);
     x_pred(3) = max(x_pred(3),0); % Have to cap velocity to keep direction
 
-    allowed_indices = [1,2,3,4,5,6,7,8,9,10,11,12, 13, 14];
+
     for idx_ble = 1:height(ble_used)
         if ble_used_flags(idx_ble)
             continue;
@@ -487,7 +487,7 @@ legend('Location', 'best');
 
 %Initialise
 x_ekf_all = zeros(6, N);
-x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.3];
+x_ekf_all(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.3];
 P_pred = eye(6);
 x_pred = zeros(6,N);
 x_pred(:,1) = x_ekf_all(:,1);
