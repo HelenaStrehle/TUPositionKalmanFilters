@@ -94,6 +94,7 @@ for k = 2:N
     [x_pred, P_pred, X_pred] = ukf_prediction_step(X_sigma, Wm, Wc, Q, dt, u, f_bias);
     x_pred(3) = max(x_pred(3),0);
     x_ukf(:,k) = x_pred;
+
 end
 
 [mse_IMU, rmse_IMU] = compare_estimate_to_gnss( ...
@@ -119,81 +120,7 @@ set(gca, 'FontSize', 18); grid on;
 
 title(ax, 'Prediction step with IMU: Estimated position', 'FontSize', 22);
 set(ax, 'FontSize', 16);
-%% UKF GNSS first itt
 
-% UKF-parametre
-alpha = 1e-3;
-kappa = 0;
-beta  = 2;
-x_ukf_gnss = zeros(5, N);
-x_ukf_gnss(:,1) = [xGNSS(1); yGNSS(1); 0; h0];
-P_pred = eye(5);
-
-% Q scaling constants
-alpha_v = 1;
-alpha_h = 1;
-
-% gnss check
-gnss_used = false(height(gnssTable), 1);
-gnss_hits = 0;
-R_gnss = diag([1.5 1.5])^2
-H_gnss = [1 0 0 0 0;
-    0 1 0 0 0];
-
-%UKF loop
-for k = 2:N
-    dt = dt_all(k-1);
-    u = [accZ_corr(k); GyroX_corr(k)];
-
-    Q = compute_Q(x_ukf_gnss(:,k-1), alpha_v, alpha_h, Rpi2, acc_noise, gyro_noise, dt);
-
-    [X_sigma, Wm, Wc] = generate_sigma_points(x_ukf_gnss(:,k-1), P_pred, alpha, beta, kappa);
-
-    [x_pred, P_pred, X_pred] = ukf_prediction_step(X_sigma, Wm, Wc, Q, dt, u, f);
-
-    % GNSS-measurement update
-    for idx_gnss = 1:height(gnssTable)
-        deltaT = seconds(gnssTable.Timestamp(idx_gnss) - imuTable.Timestamp(k));
-        if deltaT >= 0 && deltaT < 0.5
-            z = [xGNSS(idx_gnss); yGNSS(idx_gnss)];
-
-            % GNSS update step for UKF
-            [x_pred, P_pred, y_tilde] = ukf_gnss_update(x_pred, P_pred, X_pred, Wm, Wc, z, H_gnss, R_gnss);
-
-            gnss_hits = gnss_hits + 1;
-            fprintf('[k=%d] UKF-GNSS-korrektion med #%d, ændring = %.2f m\n', ...
-                k, idx_gnss, norm(y_tilde));
-        end
-    end
-
-    x_ukf_gnss(:,k) = x_pred;
-end
-
-
-[mse_IMU, rmse_IMU_gnss] = compare_estimate_to_gnss( ...
-    x_ukf_gnss(1:2,:), imuTable.Timestamp, xGNSSRef, yGNSSRef, RuteRef.TimeUTC, 'EKF');
-
-% Velocity plot
-figure;
-plot(imuTable.Timestamp, x_ukf_gnss(3,:), 'b-', 'LineWidth', 1.5);
-xlabel('Time'); ylabel('Velocity [m/s]');
-title('UKF with GNSS Correction and Bias State: Velocity over time');
-set(gca, 'FontSize', 18); grid on;
-
-%%Position plot
-[x_offset, y_offset, ax] = plot_ukf_result_with_arrows( ...
-    x_ukf_gnss(1,:), ...
-    x_ukf_gnss(2,:), ...
-    xGNSS, yGNSS, ...
-    xGNSSRef, yGNSSRef, ...
-    1800, ...           % arrow_step
-    1.5, ...            % arrow_length
-    1, ...              % arrow_width
-    rmse_IMU_gnss ...
-    );
-
-title(ax, 'UKF with GNSS Correction: Estimated position', 'FontSize', 22);
-set(ax, 'FontSize', 16);
 %% UKF GNSS Bias state
 
 % UKF-parametre
@@ -213,7 +140,7 @@ alpha_bias = 1e-6;
 gnss_used = false(height(gnssTable), 1);
 gnss_hits = 0;
 
-R_gnss = diag([4 4])^2
+R_gnss = diag([1.5 1.5])^2
 H_gnss = [1 0 0 0 0 0;
     0 1 0 0 0 0];
 
@@ -248,14 +175,12 @@ for k = 2:N
 
             fprintf('[k=%d] GNSS-korrektion med #%d, ændring = %.2f m\n', ...
                 k, idx_gnss, norm(y_tilde));
-
             break;
         end
     end
 
     x_ukf_gnss_bias(:,k) = x_pred;
 end
-Q
 
 [mse_IMU_gnss_bias, rmse_IMU_gnss_bias] = compare_estimate_to_gnss( ...
     x_ukf_gnss_bias(1:2,:), imuTable.Timestamp, xGNSSRef, yGNSSRef, RuteRef.TimeUTC, 'UKF');
@@ -290,22 +215,25 @@ set(gca, 'FontSize', 18); grid on;
 title(ax, 'UKF with GNSS Correction and Bias State: Estimated position', 'FontSize', 22);
 set(ax, 'FontSize', 16);
 
+x_ukf_gnss_bias = x_ukf_gnss_bias(1:2,:);
+save('x_ukf_gnss_position.mat', 'x_ukf_gnss_bias');
 
 %% UKF ble with bias state
 %UKF paramters
-alpha = 1e-2;
+alpha = 1e-1;
 kappa = 0;
 beta  = 2;
 
 %Initialise
 x_ukf_ble_bias = zeros(6, N);
-x_ukf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
+x_ukf_ble_bias(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 
 
 % Q scaling constants
-alpha_v = 1000;
-alpha_h = 10;
+alpha_v = 100000;
+alpha_h = 10000000;
+
 alpha_bias = 1e-6;
 
 
@@ -341,14 +269,16 @@ beaconPosList = [
     xGNSS_10014565, yGNSS_10014565;
 
     ];
-last_rssi = containers.Map('KeyType', 'double', 'ValueType', 'double');
-last_time = containers.Map('KeyType', 'double', 'ValueType', 'any');
 
-%BLE parameters
+
 sigma_shadowing = 6;
 R_ble = sigma_shadowing^2;
+
+last_rssi = containers.Map('KeyType', 'double', 'ValueType', 'double');
+last_time = containers.Map('KeyType', 'double', 'ValueType', 'any');
 n = 1.28;
 A = -77.11;
+
 
 for k = 2:N
     dt = dt_all(k-1);
@@ -360,11 +290,9 @@ for k = 2:N
 
     [x_pred, P_pred, X_pred] = ukf_prediction_step(X_sigma, Wm, Wc, Q, dt, u, f_bias);
     x_pred(3) = max(x_pred(3),0);
+    x_pred(4:5) = x_pred(4:5) / norm(x_pred(4:5) + 1e-6);
 
-    %BLE update
-    allowed_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];  %
-    for i = 1:length(allowed_indices)
-        idx_ble = allowed_indices(i);
+ for idx_ble = 1:height(ble_used)
         if ble_used_flags(idx_ble)
             continue;
         end
@@ -376,6 +304,7 @@ for k = 2:N
             beacon_id = ble_used.BeaconID(idx_ble);
             rssi_now = ble_used.RSSI(idx_ble);
             time_now = ble_used.Timestamp(idx_ble);
+
             rssi = rssi_now;
             if isKey(last_rssi, beacon_id)
                 time_diff = time_now - last_time(beacon_id);
@@ -388,20 +317,24 @@ for k = 2:N
 
 
             ref = beaconPosList(beacon_id, :);
-
             [x_pred, P_pred, y_ble, rssi_expected, d_measured] = ukf_ble_correction_rssi(x_pred, P_pred, X_pred, Wm, Wc, ref, rssi_now, R_ble, n, A);
             x_pred(3) = max(x_pred(3),0); % Have to cap velocity to keep direction
+            if rssi_expected > 0
+                warning('Unusual: predicted RSSI > 0 dBm at step %d', k);
+            end
+            x_pred(4:5) = x_pred(4:5) / norm(x_pred(4:5) + 1e-6);
 
-            fprintf('[k=%d] BLE-korrektion #%d fra beacon #%d, ændring = %.2f dB\n, expected = %.2f m,målt = %.2f m', ...
-                k, idx_ble, beacon_id, y_ble,rssi_expected, rssi);
-
+            fprintf('[k=%d] BLE-korrektion #%d fra beacon #%d, ændring = %.2f dB\n, expected = %.2f m,målt = %.2f dBm', ...
+                k, idx_ble, beacon_id, y_ble, rssi_expected, rssi);
+            Wm
             ble_used_flags(idx_ble) = true;
             ble_correction_indices(end+1) = k;
             break;
         end
+
     end
 
-    x_ukf_ble_bias(:,k) = x_pred;
+     x_ukf_ble_bias(:,k) = x_pred;
 
 end
 
@@ -412,14 +345,14 @@ end
 figure;
 plot(imuTable.Timestamp, x_ukf_ble_bias(3,:), 'b-', 'LineWidth', 1.5);
 xlabel('Time'); ylabel('Velocity [m/s]');
-title('UKF with BLE-, GNSS Correction and Bias State: Velocity over time');
+title('UKF with BLECorrection and Bias State: Velocity over time');
 set(gca, 'FontSize', 18); grid on;
 
 % Bias plot
 figure;
 plot(imuTable.Timestamp, x_ukf_ble_bias(6,:), 'b-', 'LineWidth', 1.5);
 xlabel('Time'); ylabel('Bias');
-title('UKF with BLE-, GNSS Correction and Bias State: Bias over time');
+title('UKF with BLE Correction and Bias State: Bias over time');
 set(gca, 'FontSize', 18); grid on;
 
 %UKF plot with beacon circles
@@ -471,7 +404,7 @@ legend('Location', 'best');
 %% UKF ble and gnss
 
 %UKF parameters
-alpha = 1e-2;
+alpha = 1e-1;
 kappa = 0;
 beta  = 2;
 
@@ -481,8 +414,8 @@ x_ukf_all(:,1) = [xGNSS(1); yGNSS(1); 0.0; h0; 0.5];
 P_pred = eye(6);
 
 % Q scaling constants
-alpha_v = 1000;
-alpha_h = 1000;
+alpha_v = 100000;
+alpha_h = 1000000;
 alpha_bias = 1e-6;
 
 % Bluetooth set up
@@ -568,16 +501,14 @@ for k = 2:N
         end
     end
 
-    %BLE update
-    allowed_indices = [1,2,3,4,5,6,7,8,9,10,11,12, 13, 14];
-    for idx_ble = 1:height(ble_used)
+   for idx_ble = 1:height(ble_used)
         if ble_used_flags(idx_ble)
             continue;
         end
 
         deltaT_ble = seconds(ble_used.Timestamp(idx_ble) - imuTable.Timestamp(k));
 
-        if deltaT_ble >= 0 && deltaT_ble < 0.1
+        if deltaT_ble >= 0 && deltaT_ble < 1
 
             beacon_id = ble_used.BeaconID(idx_ble);
             rssi_now = ble_used.RSSI(idx_ble);
@@ -595,17 +526,21 @@ for k = 2:N
 
 
             ref = beaconPosList(beacon_id, :);
-
             [x_pred, P_pred, y_ble, rssi_expected, d_measured] = ukf_ble_correction_rssi(x_pred, P_pred, X_pred, Wm, Wc, ref, rssi_now, R_ble, n, A);
             x_pred(3) = max(x_pred(3),0); % Have to cap velocity to keep direction
+            if rssi_expected > 0
+                warning('Unusual: predicted RSSI > 0 dBm at step %d', k);
+            end
+            x_pred(4:5) = x_pred(4:5) / norm(x_pred(4:5) + 1e-6);
 
-            fprintf('[k=%d] BLE-korrektion #%d fra beacon #%d, ændring = %.2f dB\n, expected = %.2f m,målt = %.2f m', ...
-                k, idx_ble, beacon_id, abs(y_ble),rssi_expected, rssi);
-
+            fprintf('[k=%d] BLE-korrektion #%d fra beacon #%d, ændring = %.2f dB\n, expected = %.2f m,målt = %.2f dBm', ...
+                k, idx_ble, beacon_id, y_ble, rssi_expected, rssi);
+            Wm
             ble_used_flags(idx_ble) = true;
             ble_correction_indices(end+1) = k;
             break;
         end
+
     end
 
     x_ukf_all(:,k) = x_pred;
@@ -619,14 +554,14 @@ end
 figure;
 plot(imuTable.Timestamp, x_ukf_all(3,:), 'b-', 'LineWidth', 1.5);
 xlabel('Time'); ylabel('Velocity [m/s]');
-title('UKF with GNSS Correction and Bias State: Velocity over time');
+title('UKF with GNSS- and BLE Correction and Bias State: Velocity over time');
 set(gca, 'FontSize', 18); grid on;
 
 % bias plot
 figure;
 plot(imuTable.Timestamp, x_ukf_all(6,:), 'b-', 'LineWidth', 1.5);
 xlabel('Time'); ylabel('Bias');
-title('UKF with GNSS Correction and Bias State: Bias over time');
+title('UKF with GNSS- and BLE Correction and Bias State: Bias over time');
 set(gca, 'FontSize', 18); grid on;
 
 %UKF plot with BLE circles
@@ -641,7 +576,7 @@ set(gca, 'FontSize', 18); grid on;
     rmse_IMU_all ...
     );
 
-title(ax, 'UKF with BLE Correction and Bias State: Estimated position', 'FontSize', 22);
+title(ax, 'UKF with GNSS-, BLE Correction and Bias State: Estimated position', 'FontSize', 22);
 set(ax, 'FontSize', 16);
 
 xGNSS_10014565_shifted = xGNSS_10014565 - x_offset;
@@ -676,6 +611,7 @@ legend('Location', 'best');
 
 
 %% Functions for UKF
+
 function [x_upd, P_upd, y_tilde, rssi_expected, d_measured] = ukf_ble_correction_rssi(x_pred, P_pred, X_pred, Wm, Wc, ref_pos, rssi_now, R_ble, n, A)
 
 n_sigma = size(X_pred, 2);
@@ -693,7 +629,7 @@ end
 z_pred = Z_sigma * Wm';
 rssi_expected = z_pred;
 
-y_tilde = -(rssi_now - z_pred);
+y_tilde = (rssi_now - z_pred);
 
 P_zz = R_ble;
 for i = 1:n_sigma
@@ -714,7 +650,6 @@ x_upd = x_pred + K * y_tilde;
 P_upd = P_pred - K * P_zz * K';
 end
 
-%% Funtions for UKF
 
 function Q = compute_Q(x_prev, alpha_v, alpha_h, Rpi2, acc_noise, gyro_noise, dt)
 
@@ -960,192 +895,3 @@ text(ax, x_txt, y_txt, sprintf('RMSE = %.2f m', rmse_val), ...
     'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
 
 end
-%%
-
-%% UKF ble and gnss
-
-%UKF parameters
-alpha = 1e-2;
-kappa = 0;
-beta  = 2;
-
-%Initialise
-x_ukf_all = zeros(6, N);
-x_ukf_all(:,1) = [xGNSS(1); yGNSS(1); 0.01; h0; 0.5];
-P_pred = eye(6);
-
-% Q scaling constants
-alpha_v = 1000;
-alpha_h = 1000;
-alpha_bias = 1e-6;
-
-% Bluetooth set up
-mac_to_id = containers.Map({ ...
-    '29:B9:A5:C2:3B:58', ...  % SN 10014802
-    'DE:52:34:C2:3B:58' ...  % SN 10014520
-    '66:97:31:C2:3B:58', ...  % SN 10014565
-    }, [1, 2, 3]);
-
-idx_valid = ismember(bleTable.MAC, keys(mac_to_id));
-ble_used = bleTable(idx_valid, :);
-
-ble_used.BeaconID = zeros(height(ble_used),1);
-for i = 1:height(ble_used)
-    mac = ble_used.MAC{i};
-    ble_used.BeaconID(i) = mac_to_id(mac);
-end
-
-ble_used_flags = false(height(ble_used), 1);
-ble_correction_indices = [];
-
-
-[yGNSS_10014802, xGNSS_10014802, utmzone] = deg2utm(57.0481, 9.9487);
-[yGNSS_10014520, xGNSS_10014520, utmzone] = deg2utm(57.04803, 9.94811);
-[yGNSS_10014565, xGNSS_10014565, utmzone] = deg2utm(57.0477667, 9.948115);
-
-beaconPosList = [
-    xGNSS_10014802, yGNSS_10014802;
-    xGNSS_10014520, yGNSS_10014520
-    xGNSS_10014565, yGNSS_10014565;
-
-    ];
-
-%BLE PArameters
-sigma_shadowing = 6;
-R_ble = sigma_shadowing^2;
-
-last_rssi = containers.Map('KeyType', 'double', 'ValueType', 'double');
-last_time = containers.Map('KeyType', 'double', 'ValueType', 'any');
-n = 1.28;
-A = -77.11;
-
-% gnss Parameters
-gnss_used = false(height(gnssTable), 1);
-gnss_hits = 0;
-
-R_gnss = diag([1.5 1.5])^2
-H_gnss = [1 0 0 0 0 0;
-    0 1 0 0 0 0];
-update_type = zeros(1, N);  % 0 = prediction only, 1 = BLE, 2 = GNSS, 3 = both
-
-for k = 2:N
-    dt = dt_all(k-1);
-    u = [accZ_corr(k); GyroX_corr(k)];
-
-    Q = compute_Q_bias(x_ukf_all(:,k-1), alpha_v, alpha_h, Rpi2, acc_noise, gyro_noise, dt, alpha_bias);
-
-    [X_sigma, Wm, Wc] = generate_sigma_points(x_ukf_all(:,k-1), P_pred, alpha, beta, kappa);
-
-    [x_pred, P_pred, X_pred] = ukf_prediction_step(X_sigma, Wm, Wc, Q, dt, u, f_bias);
-    x_pred(3) = max(x_pred(3),0);
-    if k == 2
-        gnss_used = false(height(gnssTable), 1);
-    end
-    gnss_updated = false;
-    % GNSS-korrektion
-    for idx_gnss = 1:height(gnssTable)
-        if gnss_used(idx_gnss)
-            continue;
-        end
-
-        deltaT = seconds(gnssTable.Timestamp(idx_gnss) - imuTable.Timestamp(k));
-        if deltaT >= 0 && deltaT < 0.5
-            z = [xGNSS(idx_gnss); yGNSS(idx_gnss)];
-            [x_pred, P_pred, y_tilde] = ukf_gnss_update(x_pred, P_pred, X_pred, Wm, Wc, z, H_gnss, R_gnss);
-            x_pred(3) = max(x_pred(3),0);
-            gnss_used(idx_gnss) = true;
-            gnss_updated = true;
-            gnss_hits = gnss_hits + 1;
-
-            fprintf('[k=%d] GNSS-korrektion med #%d, ændring = %.2f m\n', ...
-                k, idx_gnss, norm(y_tilde));
-
-            break;
-        end
-    end
-
-    %BLE update
-    allowed_indices = [1,2,3,4,5,6,7,8,9,10,11,12, 13, 14];
-    ble_updated = false;
-    for idx_ble = 1:height(ble_used)
-        if ble_used_flags(idx_ble)
-            continue;
-        end
-
-        deltaT_ble = seconds(ble_used.Timestamp(idx_ble) - imuTable.Timestamp(k));
-
-        if deltaT_ble >= 0 && deltaT_ble < 0.1
-
-            beacon_id = ble_used.BeaconID(idx_ble);
-            rssi_now = ble_used.RSSI(idx_ble);
-            time_now = ble_used.Timestamp(idx_ble);
-
-            rssi = rssi_now;
-            if isKey(last_rssi, beacon_id)
-                time_diff = time_now - last_time(beacon_id);
-                if time_diff <= seconds(2)
-                    rssi = mean([last_rssi(beacon_id), rssi_now]);
-                end
-            end
-            last_rssi(beacon_id) = rssi_now;
-            last_time(beacon_id) = time_now;
-
-
-            ref = beaconPosList(beacon_id, :);
-
-            [x_pred, P_pred, y_ble, rssi_expected, d_measured] = ukf_ble_correction_rssi(x_pred, P_pred, X_pred, Wm, Wc, ref, rssi_now, R_ble, n, A);
-            x_pred(3) = max(x_pred(3),0); % Have to cap velocity to keep direction
-
-            fprintf('[k=%d] BLE-korrektion #%d fra beacon #%d, ændring = %.2f dB\n, expected = %.2f m,målt = %.2f m', ...
-                k, idx_ble, beacon_id, abs(y_ble),rssi_expected, rssi);
-
-            ble_used_flags(idx_ble) = true;
-            ble_updated = true;
-            ble_correction_indices(end+1) = k;
-            break;
-        end
-    end
-
-    x_ukf_all(:,k) = x_pred;
-    if gnss_updated && ble_updated
-        update_type(k) = 3;
-    elseif gnss_updated
-        update_type(k) = 2;
-    elseif ble_updated
-        update_type(k) = 1;
-    else
-        update_type(k) = 0;
-    end
-end
-
-colors = {[0.7 0.7 0.7], [0 0.6 0], [1 0 0], [0.5 0 0.5]};  % gray, green, red, purple
-labels = {'Prediction only', 'BLE correction', 'GNSS correction', 'Both corrections'};
-
-figure; hold on;
-shown = false(1, 4);  % For types 0 to 3
-
-for i = 0:3
-    idx = find(update_type(2:end) == i);
-    for j = 1:length(idx)
-        k = idx(j) + 1;
-        if ~shown(i+1)
-            h = plot(imuTable.Timestamp([k-1 k]), x_ukf_all(3, [k-1 k]), '-', ...
-                'Color', colors{i+1}, 'LineWidth', 2, ...
-                'DisplayName', labels{i+1});
-            shown(i+1) = true;
-        else
-            plot(imuTable.Timestamp([k-1 k]), x_ukf_all(3, [k-1 k]), '-', ...
-                'Color', colors{i+1}, 'LineWidth', 2, ...
-                'HandleVisibility', 'off');  % no legend for repeats
-        end
-    end
-end
-
-xlabel('Time'); ylabel('Velocity [m/s]');
-title('UKF with GNSS- and BLE corrections: Velocity over time with correction types');
-legend('Location', 'best');
-set(gca, 'FontSize', 20); grid on;
-
-
-[mse_IMU_all, rmse_IMU_all] = compare_estimate_to_gnss( ...
-    x_ukf_all(1:2,:), imuTable.Timestamp, xGNSSRef, yGNSSRef, RuteRef.TimeUTC, 'EKF');
